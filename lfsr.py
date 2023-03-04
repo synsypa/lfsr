@@ -92,7 +92,7 @@ class LFSR:
         return self
 
     def __next__(self):
-        if self.stop and (self.n_generated > self.max_period):
+        if self.stop and (self.n_generated >= self.max_period):
             raise StopIteration
 
         self._step()
@@ -151,5 +151,5 @@ if __name__ == "__main__":
         try:
             next(lfsr6_stop)
         except StopIteration:
-            assert i == TEST_MAX+1, "Generator not stopping at end of period"
+            assert i == TEST_MAX, "Generator not stopping at end of period"
             break
