@@ -118,12 +118,13 @@ if __name__ == "__main__":
     # Validate Periodicity
     print("Testing Periodicity...")
     lfsr6 = LFSR(register_size=TEST_SIZE)
-    generated = []
+    generated = set()
     for i in range(TEST_MAX+20):
         n = next(lfsr6)
         if n in generated:
-            assert i == TEST_MAX, "period is incorrect"
+            assert i == TEST_MAX, f"period is incorrect: found period {i}"
             break
+        generated.add(n)
     
     # Validate Deterministic
     print("Testing Determinism...")
