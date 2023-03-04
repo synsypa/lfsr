@@ -68,22 +68,23 @@ class LFSR:
         assert register_size < 64, "only supports registers up to 64 bits"
         
         self.register_size = register_size
-        self.max_period = 2**self.register_size
+        self.max_period = (2**self.register_size)-1
 
         # Mask seed up to bitsize of register - 1
         # ensure that the last bit is 1 for reasons
-        self.register = (seed & self.register_size-2) | 1
-        
+        self.register = (seed & (self.max_period)) | 1
+        self.taps = LFSR.taps[self.register_size]
+
         self.stop = stop
         self.n_generated = 0
 
     def _step(self):
         newbit = (
             self.register 
-            ^ (self.register >> LFSR.taps[self.register_size][0])
-            ^ (self.register >> LFSR.taps[self.register_size][1])
-            ^ (self.register >> LFSR.taps[self.register_size][2])
-            ^ (self.register >> LFSR.taps[self.register_size][3])
+            ^ (self.register >> self.taps[0])
+            ^ (self.register >> self.taps[1])
+            ^ (self.register >> self.taps[2])
+            ^ (self.register >> self.taps[3])
             ) & 1
         self.register = (self.register >> 1) | (newbit << self.register_size-1)
     
@@ -91,7 +92,7 @@ class LFSR:
         return self
 
     def __next__(self):
-        if self.stop and (self.n_generated >= self.max_period):
+        if self.stop and (self.n_generated > self.max_period):
             raise StopIteration
 
         self._step()
@@ -103,49 +104,52 @@ class LFSR:
 
     @staticmethod
     def get_period_size(bits):
-        return 2**bits
+        return (2**bits)-1
 
 
 if __name__ == "__main__":
 
+    TEST_SIZE = 6
+    TEST_MAX = (2**TEST_SIZE)-1
     # Validate period size
     print("Testing Period Size...")
-    assert LFSR.get_period_size(6) == 64, "get_period_size failed"
+    assert LFSR.get_period_size(TEST_SIZE) == TEST_MAX, "get_period_size failed"
 
     # Validate Periodicity
     print("Testing Periodicity...")
-    lfsr6 = LFSR(register_size=6)
+    lfsr6 = LFSR(register_size=TEST_SIZE)
     generated = []
-    for i in range(100):
+    for i in range(TEST_MAX+20):
         n = next(lfsr6)
         if n in generated:
-            assert i == 64-1, "period is incorrect"
+            assert i == TEST_MAX, "period is incorrect"
             break
     
     # Validate Deterministic
     print("Testing Determinism...")
-    lfsr6_a = LFSR(register_size=6, seed=10)
-    lfsr6_b = LFSR(register_size=6, seed=10)
-    lfsr6_c = LFSR(register_size=6, seed=12)
-    gen_a = [next(lfsr6_a) for _ in range(100)]
-    gen_b = [next(lfsr6_b) for _ in range(100)]
-    gen_c = [next(lfsr6_c) for _ in range(100)]
+    lfsr6_a = LFSR(register_size=TEST_SIZE, seed=10)
+    lfsr6_b = LFSR(register_size=TEST_SIZE, seed=10)
+    lfsr6_c = LFSR(register_size=TEST_SIZE, seed=12)
+    gen_a = [next(lfsr6_a) for _ in range(TEST_MAX+20)]
+    gen_b = [next(lfsr6_b) for _ in range(TEST_MAX+20)]
+    gen_c = [next(lfsr6_c) for _ in range(TEST_MAX+20)]
 
     assert gen_a == gen_b, "not deterministic"
     assert gen_a != gen_c, "seed not setting different state"
 
     # gen vs next
     print("Testing Generation...")
-    lfsr6_gen = LFSR(register_size=6, seed=15)
-    lfsr6_next = LFSR(register_size=6, seed=15)
+    lfsr6_gen = LFSR(register_size=TEST_SIZE, seed=15)
+    lfsr6_next = LFSR(register_size=TEST_SIZE, seed=15)
     assert lfsr6_gen.gen() == next(lfsr6_next), "generation functions are wrong"
 
     # Test Stop
     print("Testing stop...")
-    lfsr6_stop = LFSR(register_size=6, stop=True)
+    lfsr6_stop = LFSR(register_size=TEST_SIZE, stop=True)
 
-    for i in range(50):
+    for i in range(TEST_MAX+20):
         try:
             next(lfsr6_stop)
         except StopIteration:
-            assert i == 64, "Generator not stopping at end of period"
+            assert i == TEST_MAX+1, "Generator not stopping at end of period"
+            break
